@@ -21,10 +21,15 @@ const DashboardPage: React.FC = () => {
   const [recentRisks, setRecentRisks] = useState<RiskAlert[]>([]);
   const [inventory, setInventory] = useState<InventoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const [sumRes, riskRes, invRes] = await Promise.all([
         DashboardApi.getDashboardSummary(),
@@ -38,11 +43,12 @@ const DashboardPage: React.FC = () => {
       console.error('Error fetching dashboard data', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(false);
   }, []);
 
   const handleSeed = async () => {
@@ -118,9 +124,18 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Supply Chain Dashboard</h1>
-        <button onClick={fetchData} className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-          <RefreshCw size={20} />
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Supply Chain Dashboard</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Real-time operational digital twin monitoring & intelligence</p>
+        </div>
+        <button 
+          onClick={() => fetchData(true)} 
+          disabled={refreshing}
+          className="px-3 py-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-gray-200 bg-white rounded-lg transition-colors flex items-center space-x-1.5 shadow-2xs text-xs font-medium"
+          title="Recalculate Health & Refresh Metrics"
+        >
+          <RefreshCw size={15} className={refreshing ? 'animate-spin text-blue-600' : ''} />
+          <span>{refreshing ? 'Calculating Health...' : 'Recalculate Health'}</span>
         </button>
       </div>
 
