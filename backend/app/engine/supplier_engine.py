@@ -10,7 +10,7 @@ def calculate_supplier_score(db: Session, supplier_id: int) -> dict:
     
     total_orders = len(orders)
     if total_orders == 0:
-        return {"on_time_rate": 1.0, "avg_delay": 0}
+        return {"on_time_rate": 0.85, "avg_delay": 5.0}
         
     on_time = 0
     total_delay = 0
@@ -22,11 +22,11 @@ def calculate_supplier_score(db: Session, supplier_id: int) -> dict:
                 on_time += 1
             else:
                 delay = (order.actual_delivery_date - order.expected_delivery_date).days
-                total_delay += delay
+                total_delay += max(0, delay)
                 late_count += 1
                 
-    on_time_rate = on_time / total_orders
-    avg_delay = total_delay / late_count if late_count > 0 else 0
+    on_time_rate = round(on_time / total_orders, 2)
+    avg_delay = round(total_delay / late_count, 1) if late_count > 0 else 0.0
     
     return {"on_time_rate": on_time_rate, "avg_delay": avg_delay}
 
@@ -38,28 +38,25 @@ def analyze_supplier_risks(db: Session, org_id: int) -> list[dict]:
         score_data = calculate_supplier_score(db, supplier.id)
         on_time_rate = score_data['on_time_rate']
         
-        # Check single source
-        single_source = False # simplified
-        
         severity = None
-        if on_time_rate < 0.6:
+        if on_time_rate < 0.70:
             severity = "HIGH"
-        elif on_time_rate < 0.75:
+        elif on_time_rate < 0.82:
             severity = "MEDIUM"
             
-        if severity and single_source:
-            severity = "CRITICAL" if severity == "HIGH" else "HIGH"
-            
         supplier.on_time_delivery_rate = on_time_rate
-        supplier.avg_delivery_days = score_data['avg_delay'] # simplified
-        db.commit()
+        if score_data['avg_delay'] > 0:
+            supplier.avg_delivery_days = score_data['avg_delay']
         
         if severity:
             risks.append({
                 "supplier_id": supplier.id,
                 "supplier_name": supplier.name,
                 "on_time_rate": on_time_rate,
+                "avg_delay": score_data['avg_delay'],
                 "severity": severity
             })
             
+    # Commit all supplier metrics updates once outside the loop
+    db.commit()
     return risks

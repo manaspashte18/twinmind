@@ -3,11 +3,13 @@ import { RiskAlert, RecommendationOption } from '../types';
 import { RiskApi, RecommendationApi } from '../services/api';
 import RiskAlertCard from '../components/RiskAlertCard';
 import RecommendationCard from '../components/RecommendationCard';
-import { AlertCircle, AlertTriangle, Info, RefreshCw } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, RefreshCw, CheckCircle2, Loader2 } from 'lucide-react';
 
 const RiskAlertsPage: React.FC = () => {
   const [risks, setRisks] = useState<RiskAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recalculating, setRecalculating] = useState(false);
+  const [recalcSuccess, setRecalcSuccess] = useState<string | null>(null);
   const [selectedRisk, setSelectedRisk] = useState<RiskAlert | null>(null);
   const [options, setOptions] = useState<RecommendationOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -23,6 +25,22 @@ const RiskAlertsPage: React.FC = () => {
       console.error('Failed to fetch risks', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRecalculate = async () => {
+    setRecalculating(true);
+    setRecalcSuccess(null);
+    try {
+      const res = await RiskApi.recalculateRisks();
+      await fetchRisks();
+      setRecalcSuccess(res.data?.message || 'Operational risks successfully recalculated!');
+      setTimeout(() => setRecalcSuccess(null), 4000);
+    } catch (err: any) {
+      console.error('Failed to recalculate risks', err);
+      window.alert(`Failed to recalculate risks: ${err?.response?.data?.detail || 'Please try again.'}`);
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -58,14 +76,30 @@ const RiskAlertsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Risk Intelligence Center</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Risk Intelligence Center</h1>
+          <p className="text-xs text-gray-500 mt-0.5">Real-time risk radar analyzing inventory depletion, supplier delays, and order fulfillment</p>
+        </div>
         <button 
-          onClick={() => RiskApi.recalculateRisks().then(fetchRisks)}
-          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 flex items-center"
+          onClick={handleRecalculate}
+          disabled={recalculating}
+          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 active:bg-gray-100 flex items-center shadow-2xs disabled:opacity-60 transition-all"
         >
-          <RefreshCw size={16} className="mr-2" /> Recalculate Risks
+          {recalculating ? (
+            <Loader2 size={16} className="mr-2 animate-spin text-blue-600" />
+          ) : (
+            <RefreshCw size={16} className="mr-2" />
+          )}
+          <span>{recalculating ? 'Analyzing Risks...' : 'Recalculate Risks'}</span>
         </button>
       </div>
+
+      {recalcSuccess && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center space-x-2">
+          <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+          <span>{recalcSuccess}</span>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-red-50 border border-red-100 rounded-xl p-4 flex items-center shadow-sm">

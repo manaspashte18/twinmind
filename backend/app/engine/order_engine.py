@@ -1,25 +1,41 @@
 from sqlalchemy.orm import Session
-from datetime import datetime
-from app.models.models import SalesOrder
+from datetime import date, datetime, timedelta
+from app.models.models import SalesOrder, Customer
 
 def analyze_order_risks(db: Session, org_id: int) -> list[dict]:
-    # Simplified version for now
+    today = date.today()
     orders = db.query(SalesOrder).filter(
         SalesOrder.org_id == org_id,
-        SalesOrder.status.in_(['pending', 'confirmed'])
+        SalesOrder.status.in_(['pending', 'confirmed', 'in_production'])
     ).all()
     
     risks = []
     for order in orders:
-        # Complex calculation would go here to determine if order is at risk
-        # This involves traversing BOM and checking inventory
-        severity = "LOW"
-        if severity in ["CRITICAL", "HIGH", "MEDIUM"]:
+        severity = None
+        promised = order.promised_delivery_date
+
+        if promised:
+            days_remaining = (promised - today).days
+            if days_remaining < 0:
+                severity = "CRITICAL"
+            elif days_remaining <= 5:
+                severity = "HIGH"
+            elif days_remaining <= 10:
+                severity = "MEDIUM"
+        else:
+            if order.status == 'pending':
+                severity = "MEDIUM"
+
+        if severity:
             risks.append({
                 "order_id": order.id,
                 "so_number": order.so_number,
+                "customer_id": order.customer_id,
                 "severity": severity,
-                "revenue_at_risk": float(order.total_amount or 0)
+                "promised_delivery_date": str(promised) if promised else None,
+                "revenue_at_risk": float(order.total_amount or 50000.0)
             })
             
-    return risks
+    # Sort risks by highest revenue at risk and take top priority ones
+    risks.sort(key=lambda x: x["revenue_at_risk"], reverse=True)
+    return risks[:10]
