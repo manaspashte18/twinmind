@@ -11,6 +11,7 @@ from app.engine.order_engine import analyze_order_risks
 
 router = APIRouter(prefix="/risks", tags=["risks"])
 
+@router.get("")
 @router.get("/")
 def list_risks(
     severity: Optional[str] = None, 
