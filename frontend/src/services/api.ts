@@ -2,7 +2,8 @@ import axios from 'axios';
 import { 
   User, Organization, Material, Product, Supplier, Customer, 
   InventoryRecord, PurchaseOrder, SalesOrder, RiskAlert, 
-  DashboardSummary, HealthScore, RecommendationOption, ScenarioResult, UploadPreview 
+  DashboardSummary, HealthScore, RecommendationOption, ScenarioResult, UploadPreview,
+  SearchResponse
 } from '../types';
 
 const api = axios.create({
@@ -133,6 +134,10 @@ export const SimulatorApi = {
 
 export const SeedApi = {
   seedDatabase: () => api.post('/seed')
+};
+
+export const SearchApi = {
+  search: (query: string) => api.get<SearchResponse>(`/search?q=${encodeURIComponent(query)}`)
 };
 
 export default api;

@@ -170,3 +170,18 @@ export interface UploadPreview {
   preview: Record<string, any>[];
   data_quality: Record<string, any>;
 }
+
+export interface SearchItem {
+  id: number;
+  type: 'material' | 'product' | 'supplier' | 'customer' | 'order' | 'risk';
+  category: string;
+  title: string;
+  subtitle: string;
+  url: string;
+}
+
+export interface SearchResponse {
+  query: string;
+  total: number;
+  results: SearchItem[];
+}

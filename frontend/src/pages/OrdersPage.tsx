@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { PurchaseOrder, SalesOrder, Supplier, Customer } from '../types';
 import { PurchaseOrderApi, SalesOrderApi, SupplierApi, CustomerApi } from '../services/api';
 import DataTable, { Column } from '../components/DataTable';
@@ -6,7 +7,10 @@ import StatusBadge from '../components/StatusBadge';
 import { Plus, X } from 'lucide-react';
 
 const OrdersPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'purchase' | 'sales'>('purchase');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState<'purchase' | 'sales'>(
+    location.pathname === '/sales-orders' ? 'sales' : 'purchase'
+  );
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -41,6 +45,14 @@ const OrdersPage: React.FC = () => {
   useEffect(() => {
     fetchOrders();
   }, [activeTab]);
+
+  useEffect(() => {
+    if (location.pathname === '/sales-orders') {
+      setActiveTab('sales');
+    } else if (location.pathname === '/purchase-orders') {
+      setActiveTab('purchase');
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     // Load suppliers and customers for the dropdowns

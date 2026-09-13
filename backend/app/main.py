@@ -10,7 +10,7 @@ from app.routers import (
     customers_router, inventory_router, purchase_orders_router,
     sales_orders_router, dashboard_router, risks_router,
     recommendations_router, reports_router, simulator_router,
-    seed_router
+    seed_router, search_router
 )
 
 @asynccontextmanager
@@ -49,6 +49,7 @@ app.include_router(recommendations_router, prefix="/api", tags=["Recommendations
 app.include_router(reports_router, prefix="/api", tags=["Reports"])
 app.include_router(simulator_router, prefix="/api", tags=["Simulator"])
 app.include_router(seed_router, prefix="/api", tags=["Seed"])
+app.include_router(search_router, prefix="/api", tags=["Search"])
 
 @app.get("/")
 def root():
