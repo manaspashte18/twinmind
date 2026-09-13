@@ -225,7 +225,7 @@ class PurchaseOrderBase(BaseModel):
     total_amount: float = 0.0
 
 class PurchaseOrderCreate(PurchaseOrderBase):
-    pass
+    items: Optional[List[Dict[str, Any]]] = []
 
 class PurchaseOrderUpdate(BaseModel):
     status: Optional[str] = None
@@ -266,7 +266,7 @@ class SalesOrderBase(BaseModel):
     total_amount: float = 0.0
 
 class SalesOrderCreate(SalesOrderBase):
-    pass
+    items: Optional[List[Dict[str, Any]]] = []
 
 class SalesOrderUpdate(BaseModel):
     status: Optional[str] = None

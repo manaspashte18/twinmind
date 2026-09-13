@@ -9,6 +9,7 @@ from app.auth import get_current_user
 
 router = APIRouter(prefix="/purchase-orders", tags=["purchase_orders"])
 
+@router.get("")
 @router.get("/")
 def list_purchase_orders(
     status: Optional[str] = None, 
@@ -23,20 +24,27 @@ def list_purchase_orders(
         query = query.filter(PurchaseOrder.supplier_id == supplier_id)
     return query.all()
 
+@router.post("")
 @router.post("/")
 def create_purchase_order(po: PurchaseOrderCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    po_data = po.dict(exclude={"items"})
+    po_data = po.model_dump(exclude={"items"})
     db_po = PurchaseOrder(**po_data, org_id=current_user.org_id)
     db.add(db_po)
     db.commit()
     db.refresh(db_po)
     
-    for item in po.items:
-        db_item = PurchaseOrderItem(**item.dict(), purchase_order_id=db_po.id)
-        db.add(db_item)
-    
-    db.commit()
-    db.refresh(db_po)
+    if po.items:
+        for item in po.items:
+            item_dict = item if isinstance(item, dict) else item.model_dump()
+            db_item = PurchaseOrderItem(
+                purchase_order_id=db_po.id,
+                material_id=item_dict.get("material_id"),
+                quantity=item_dict.get("quantity", 0),
+                unit_price=item_dict.get("unit_price", 0)
+            )
+            db.add(db_item)
+        db.commit()
+        db.refresh(db_po)
     return db_po
 
 @router.get("/{po_id}")

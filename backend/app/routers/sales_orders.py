@@ -8,6 +8,7 @@ from app.auth import get_current_user
 
 router = APIRouter(prefix="/sales-orders", tags=["sales_orders"])
 
+@router.get("")
 @router.get("/")
 def list_sales_orders(
     status: Optional[str] = None, 
@@ -22,20 +23,27 @@ def list_sales_orders(
         query = query.filter(SalesOrder.customer_id == customer_id)
     return query.all()
 
+@router.post("")
 @router.post("/")
 def create_sales_order(so: SalesOrderCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    so_data = so.dict(exclude={"items"})
+    so_data = so.model_dump(exclude={"items"})
     db_so = SalesOrder(**so_data, org_id=current_user.org_id)
     db.add(db_so)
     db.commit()
     db.refresh(db_so)
     
-    for item in so.items:
-        db_item = SalesOrderItem(**item.dict(), sales_order_id=db_so.id)
-        db.add(db_item)
-    
-    db.commit()
-    db.refresh(db_so)
+    if so.items:
+        for item in so.items:
+            item_dict = item if isinstance(item, dict) else item.model_dump()
+            db_item = SalesOrderItem(
+                sales_order_id=db_so.id,
+                product_id=item_dict.get("product_id"),
+                quantity=item_dict.get("quantity", 0),
+                unit_price=item_dict.get("unit_price", 0)
+            )
+            db.add(db_item)
+        db.commit()
+        db.refresh(db_so)
     return db_so
 
 @router.get("/{so_id}")
