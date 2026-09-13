@@ -85,6 +85,7 @@ def delete_supplier(
     if not supplier:
         raise HTTPException(status_code=404, detail="Supplier not found")
     
+    db.query(SupplierMaterial).filter(SupplierMaterial.supplier_id == supplier_id).delete()
     db.delete(supplier)
     db.commit()
     return {"message": "Supplier deleted successfully"}

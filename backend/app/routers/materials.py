@@ -95,6 +95,8 @@ def delete_material(
     if not material:
         raise HTTPException(status_code=404, detail="Material not found")
     
+    db.query(InventoryRecord).filter(InventoryRecord.material_id == material_id).delete()
+    db.query(SupplierMaterial).filter(SupplierMaterial.material_id == material_id).delete()
     db.delete(material)
     db.commit()
     return {"message": "Material deleted successfully"}
