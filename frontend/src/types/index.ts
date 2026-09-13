@@ -169,6 +169,7 @@ export interface UploadPreview {
   columns: string[];
   preview: Record<string, any>[];
   data_quality: Record<string, any>;
+  rows?: Record<string, any>[];
 }
 
 export interface SearchItem {

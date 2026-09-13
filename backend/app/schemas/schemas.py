@@ -380,6 +380,7 @@ class UploadPreview(BaseModel):
     columns: List[str]
     preview: List[Dict[str, Any]]
     data_quality: Dict[str, Any]
+    rows: Optional[List[Dict[str, Any]]] = None
 
 class RecommendationOption(BaseModel):
     title: str

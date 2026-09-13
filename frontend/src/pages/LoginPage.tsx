@@ -8,6 +8,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [forgotInfo, setForgotInfo] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -79,9 +80,25 @@ const LoginPage: React.FC = () => {
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">Remember me</label>
               </div>
               <div className="text-sm">
-                <a href="#" className="font-medium text-blue-600 hover:text-blue-500">Forgot your password?</a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEmail('demo@twinmind.com');
+                    setPassword('password123');
+                    setForgotInfo(true);
+                  }}
+                  className="font-medium text-blue-600 hover:text-blue-500 focus:outline-none"
+                >
+                  Forgot password / Auto-fill demo
+                </button>
               </div>
             </div>
+
+            {forgotInfo && (
+              <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-700 border border-blue-200 animate-in fade-in">
+                Demo credentials loaded: <strong>demo@twinmind.com</strong> / <strong>password123</strong>. Click "Sign in" below.
+              </div>
+            )}
 
             <div>
               <button

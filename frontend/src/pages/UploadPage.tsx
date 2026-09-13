@@ -29,12 +29,17 @@ const UploadPage: React.FC = () => {
       // Create a default mapping mapping uploaded columns exactly to themselves for this MVP
       const column_mapping = preview.columns.reduce((acc, col) => ({...acc, [col]: col}), {});
       
-      await UploadApi.confirmUpload({
+      const payload = {
         entity_type: entityType,
         filename: preview.filename,
-        column_mapping
-      });
-      setImportResult({ success: true, message: `Successfully imported ${preview.total_rows} ${entityType}` });
+        column_mapping,
+        mappings: column_mapping,
+        rows: preview.rows || preview.preview
+      };
+
+      const res = await UploadApi.confirmUpload(payload);
+      const insertedCount = res.data?.inserted_count ?? preview.total_rows;
+      setImportResult({ success: true, message: `Successfully imported ${insertedCount} ${entityType}` });
       setPreview(null);
     } catch (error: any) {
       setImportResult({ 

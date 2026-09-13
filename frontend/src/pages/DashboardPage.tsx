@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   Package, DollarSign, AlertTriangle, Truck, 
-  ShoppingCart, RefreshCw, BarChart3, Database
+  ShoppingCart, RefreshCw, BarChart3, Database, Upload
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -76,7 +77,7 @@ const DashboardPage: React.FC = () => {
         <p className="text-lg text-gray-600">
           Your organization currently has no data. You can either manually upload your supply chain data or generate demo data to explore the platform's capabilities.
         </p>
-        <div className="flex gap-4 mt-8">
+        <div className="flex flex-wrap justify-center gap-4 mt-8">
           <button 
             onClick={handleSeed}
             disabled={seeding}
@@ -85,6 +86,13 @@ const DashboardPage: React.FC = () => {
             {seeding ? <RefreshCw className="animate-spin mr-2" size={20} /> : <Database className="mr-2" size={20} />}
             Generate Demo Data
           </button>
+          <Link
+            to="/upload"
+            className="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center shadow-sm"
+          >
+            <Upload className="mr-2" size={20} />
+            Upload Custom Data
+          </Link>
         </div>
       </div>
     );
@@ -218,7 +226,7 @@ const DashboardPage: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 h-full">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-gray-900">Priority Risks</h3>
-              <a href="/risks" className="text-sm font-medium text-blue-600 hover:text-blue-800">View All</a>
+              <Link to="/risks" className="text-sm font-medium text-blue-600 hover:text-blue-800">View All</Link>
             </div>
             
             {recentRisks.length > 0 ? (

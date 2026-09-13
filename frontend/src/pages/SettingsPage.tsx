@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Organization } from '../types';
 import { OrgApi } from '../services/api';
+import { CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
   const { user } = useAuth();
   const [org, setOrg] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -43,13 +45,18 @@ const SettingsPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setStatusMessage(null);
     try {
       const res = await OrgApi.updateOrg(formData);
       setOrg(res.data);
-      alert('Settings saved successfully');
-    } catch (error) {
+      setStatusMessage({ type: 'success', text: 'Organization settings updated successfully!' });
+      setTimeout(() => setStatusMessage(null), 4000);
+    } catch (error: any) {
       console.error('Failed to update org', error);
-      alert('Failed to save settings');
+      setStatusMessage({ 
+        type: 'error', 
+        text: error.response?.data?.detail || 'Failed to save settings. Please try again.' 
+      });
     } finally {
       setSaving(false);
     }
@@ -61,6 +68,21 @@ const SettingsPage: React.FC = () => {
     <div className="max-w-4xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
       
+      {statusMessage && (
+        <div className={`p-4 rounded-xl flex items-center space-x-3 text-sm font-medium animate-in fade-in ${
+          statusMessage.type === 'success'
+            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+            : 'bg-rose-50 text-rose-800 border border-rose-200'
+        }`}>
+          {statusMessage.type === 'success' ? (
+            <CheckCircle2 size={20} className="text-emerald-600 shrink-0" />
+          ) : (
+            <AlertCircle size={20} className="text-rose-600 shrink-0" />
+          )}
+          <span>{statusMessage.text}</span>
+        </div>
+      )}
+
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-6 border-b border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900">Organization Profile</h2>
@@ -132,9 +154,16 @@ const SettingsPage: React.FC = () => {
             <button 
               type="submit"
               disabled={saving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center shadow-2xs transition-all"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? (
+                <>
+                  <Loader2 size={16} className="animate-spin mr-2" />
+                  <span>Saving Changes...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
             </button>
           </div>
         </form>
