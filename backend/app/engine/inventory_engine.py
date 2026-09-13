@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models.models import Material, Supplier, InventoryRecord, SupplierMaterial
+from sqlalchemy import func
+from app.models.models import Material, Supplier, InventoryRecord, SupplierMaterial, PurchaseOrder, PurchaseOrderItem
 
 def analyze_inventory_risks(db: Session, org_id: int) -> list[dict]:
     # Single batch query for all materials + inventory
@@ -13,6 +14,18 @@ def analyze_inventory_risks(db: Session, org_id: int) -> list[dict]:
         sm.material_id: sm.supplier_id 
         for sm in db.query(SupplierMaterial).filter(SupplierMaterial.is_primary == True).all()
     }
+
+    # Pre-fetch pending/ordered quantities in pipeline
+    open_pos = db.query(
+        PurchaseOrderItem.material_id, 
+        func.sum(PurchaseOrderItem.quantity)
+    ).join(
+        PurchaseOrder, PurchaseOrder.id == PurchaseOrderItem.purchase_order_id
+    ).filter(
+        PurchaseOrder.org_id == org_id,
+        PurchaseOrder.status.in_(["pending", "ordered", "shipped"])
+    ).group_by(PurchaseOrderItem.material_id).all()
+    pipeline_qty = {mat_id: (qty or 0.0) for mat_id, qty in open_pos}
 
     risks = []
     for material, inventory in records:
@@ -32,7 +45,13 @@ def analyze_inventory_risks(db: Session, org_id: int) -> list[dict]:
         score = 0
         min_stock = material.min_stock_level or 0.0
 
-        if days_until_stockout <= supplier_delivery_days:
+        in_pipeline = pipeline_qty.get(material.id, 0.0)
+        effective_qty = quantity + in_pipeline
+
+        # If incoming PO is already placed and covers safety threshold, mitigate risk
+        if in_pipeline > 0 and (effective_qty >= min_stock or in_pipeline >= avg_daily_usage * supplier_delivery_days):
+            severity = None
+        elif days_until_stockout <= supplier_delivery_days:
             severity = "CRITICAL"
             score = 92
         elif days_until_stockout <= supplier_delivery_days * 1.5:

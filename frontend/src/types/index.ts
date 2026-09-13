@@ -121,6 +121,7 @@ export interface RiskAlert {
   financial_impact: number | null;
   status: string;
   created_at: string;
+  resolved_at?: string | null;
 }
 
 export interface DashboardSummary {

@@ -7,7 +7,7 @@ interface Props {
   options: RecommendationOption[];
   riskTitle: string;
   riskId?: number;
-  onApprove?: (option: RecommendationOption) => void;
+  onApprove?: (option: RecommendationOption, executionDetails?: any) => void;
 }
 
 const RecommendationCard: React.FC<Props> = ({ options, riskTitle, riskId, onApprove }) => {
@@ -22,10 +22,10 @@ const RecommendationCard: React.FC<Props> = ({ options, riskTitle, riskId, onApp
 
     setApprovingIdx(idx);
     try {
-      await RecommendationApi.approveOption(riskId, option);
+      const res = await RecommendationApi.approveOption(riskId, option);
       setApprovedIdx(idx);
       if (onApprove) {
-        onApprove(option);
+        onApprove(option, res.data?.execution_details);
       }
     } catch (err: any) {
       console.error("Failed to approve action", err);
@@ -37,7 +37,10 @@ const RecommendationCard: React.FC<Props> = ({ options, riskTitle, riskId, onApp
 
   return (
     <div className="mt-4">
-      <h3 className="text-base font-bold text-gray-900 mb-3">Recommended Actions for: {riskTitle}</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-base font-bold text-gray-900">Recommended Actions for: {riskTitle}</h3>
+        <span className="text-xs text-gray-500">Select an action to execute real operational workflows</span>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {options.map((option, idx) => {
           const isApproving = approvingIdx === idx;
@@ -48,18 +51,18 @@ const RecommendationCard: React.FC<Props> = ({ options, riskTitle, riskId, onApp
               key={idx} 
               className={`bg-white border rounded-xl p-4 shadow-sm transition-all relative overflow-hidden flex flex-col justify-between ${
                 isApproved 
-                  ? 'border-emerald-300 ring-2 ring-emerald-500/20 bg-emerald-50/20' 
+                  ? 'border-emerald-400 ring-2 ring-emerald-500/30 bg-emerald-50/30' 
                   : 'border-blue-100 hover:shadow-md hover:border-blue-300'
               }`}
             >
               {idx === 0 && !isApproved && (
-                <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase tracking-wider">
-                  Best Option
+                <div className="absolute top-0 right-0 bg-blue-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-bl-lg uppercase tracking-wider">
+                  Recommended
                 </div>
               )}
               {isApproved && (
-                <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg uppercase tracking-wider">
-                  Active / Approved
+                <div className="absolute top-0 right-0 bg-emerald-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-bl-lg uppercase tracking-wider">
+                  Approved & Executed
                 </div>
               )}
 
@@ -69,17 +72,17 @@ const RecommendationCard: React.FC<Props> = ({ options, riskTitle, riskId, onApp
               </div>
               
               <div>
-                <div className="space-y-1.5 mb-4 bg-gray-50/80 p-2.5 rounded-lg text-xs">
+                <div className="space-y-1.5 mb-4 bg-gray-50/90 p-2.5 rounded-lg text-xs border border-gray-100">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 flex items-center"><DollarSign size={13} className="mr-1"/> Est. Cost</span>
+                    <span className="text-gray-500 flex items-center"><DollarSign size={13} className="mr-1 text-gray-400"/> Est. Cost</span>
                     <span className="font-semibold text-gray-900">${option.estimated_cost.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 flex items-center"><Clock size={13} className="mr-1"/> Delay</span>
+                    <span className="text-gray-500 flex items-center"><Clock size={13} className="mr-1 text-gray-400"/> Delay</span>
                     <span className="font-semibold text-gray-900">{option.expected_delay_days} days</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500 flex items-center"><Shield size={13} className="mr-1"/> Residual Risk</span>
+                    <span className="text-gray-500 flex items-center"><Shield size={13} className="mr-1 text-gray-400"/> Residual Risk</span>
                     <span className="font-semibold capitalize text-gray-900">{option.risk_level}</span>
                   </div>
                 </div>
@@ -92,13 +95,13 @@ const RecommendationCard: React.FC<Props> = ({ options, riskTitle, riskId, onApp
                       ? 'bg-emerald-600 text-white cursor-default'
                       : isApproving
                       ? 'bg-blue-100 text-blue-700'
-                      : 'bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white'
+                      : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.99]'
                   }`}
                 >
                   {isApproving ? (
                     <>
                       <Loader2 size={15} className="mr-1.5 animate-spin" />
-                      <span>Approving & Executing...</span>
+                      <span>Executing Workflow...</span>
                     </>
                   ) : isApproved ? (
                     <>

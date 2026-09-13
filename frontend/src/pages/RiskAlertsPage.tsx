@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RiskAlert, RecommendationOption } from '../types';
 import { RiskApi, RecommendationApi } from '../services/api';
 import RiskAlertCard from '../components/RiskAlertCard';
 import RecommendationCard from '../components/RecommendationCard';
-import { AlertCircle, AlertTriangle, Info, RefreshCw, CheckCircle2, Loader2 } from 'lucide-react';
+import { 
+  AlertCircle, AlertTriangle, Info, RefreshCw, CheckCircle2, 
+  Loader2, CheckCircle, ArrowRight, X, ShoppingCart, Calendar, 
+  Package, ShieldCheck
+} from 'lucide-react';
+
+interface ExecutionModalState {
+  open: boolean;
+  title: string;
+  details?: any;
+}
 
 const RiskAlertsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [risks, setRisks] = useState<RiskAlert[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculating, setRecalculating] = useState(false);
@@ -14,6 +26,7 @@ const RiskAlertsPage: React.FC = () => {
   const [options, setOptions] = useState<RecommendationOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [filter, setFilter] = useState('active');
+  const [executionModal, setExecutionModal] = useState<ExecutionModalState | null>(null);
 
   const fetchRisks = async () => {
     setLoading(true);
@@ -44,10 +57,17 @@ const RiskAlertsPage: React.FC = () => {
     }
   };
 
-  const handleOptionApproved = async (option: RecommendationOption) => {
+  const handleOptionApproved = async (option: RecommendationOption, executionDetails?: any) => {
+    // Show execution modal immediately
+    setExecutionModal({
+      open: true,
+      title: option.title,
+      details: executionDetails
+    });
+
     await fetchRisks();
     setRecalcSuccess(`✓ Mitigation Action Approved: "${option.title}". Risk successfully marked as resolved.`);
-    setTimeout(() => setRecalcSuccess(null), 5000);
+    setTimeout(() => setRecalcSuccess(null), 6000);
   };
 
   useEffect(() => {
@@ -89,7 +109,7 @@ const RiskAlertsPage: React.FC = () => {
         <button 
           onClick={handleRecalculate}
           disabled={recalculating}
-          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 active:bg-gray-100 flex items-center shadow-2xs disabled:opacity-60 transition-all"
+          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 active:bg-gray-100 flex items-center shadow-2xs disabled:opacity-60 transition-all cursor-pointer"
         >
           {recalculating ? (
             <Loader2 size={16} className="mr-2 animate-spin text-blue-600" />
@@ -101,7 +121,7 @@ const RiskAlertsPage: React.FC = () => {
       </div>
 
       {recalcSuccess && (
-        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center space-x-2">
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-sm flex items-center space-x-2 animate-fadeIn">
           <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
           <span>{recalcSuccess}</span>
         </div>
@@ -131,8 +151,8 @@ const RiskAlertsPage: React.FC = () => {
           <button 
             key={status}
             onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize ${
-              filter === status ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition-all cursor-pointer ${
+              filter === status ? 'bg-blue-600 text-white shadow-xs' : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
           >
             {status} Risks
@@ -145,10 +165,16 @@ const RiskAlertsPage: React.FC = () => {
           {loading ? (
             <div className="py-10 text-center text-gray-500">Loading risks...</div>
           ) : filteredRisks.length === 0 ? (
-            <div className="py-10 text-center text-gray-500 bg-white rounded-xl border border-gray-100">No {filter} risks found.</div>
+            <div className="py-10 text-center text-gray-500 bg-white rounded-xl border border-gray-100 p-6">
+              No {filter} risks found.
+            </div>
           ) : (
             filteredRisks.map(alert => (
-              <div key={alert.id} onClick={() => handleRiskSelect(alert)} className={`cursor-pointer transition-transform ${selectedRisk?.id === alert.id ? 'transform scale-[1.02] ring-2 ring-blue-500 rounded-xl' : ''}`}>
+              <div 
+                key={alert.id} 
+                onClick={() => handleRiskSelect(alert)} 
+                className={`cursor-pointer transition-transform ${selectedRisk?.id === alert.id ? 'transform scale-[1.02] ring-2 ring-blue-500 rounded-xl' : ''}`}
+              >
                 <RiskAlertCard alert={alert} onUpdate={fetchRisks} />
               </div>
             ))
@@ -161,8 +187,18 @@ const RiskAlertsPage: React.FC = () => {
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">{selectedRisk.title}</h2>
-                  <div className="flex space-x-3 text-sm text-gray-500">
-                    <span className="capitalize px-2.5 py-0.5 rounded-full bg-gray-100">{selectedRisk.severity} Priority</span>
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
+                    <span className={`capitalize px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      selectedRisk.status === 'resolved' 
+                        ? 'bg-emerald-100 text-emerald-800' 
+                        : selectedRisk.severity === 'critical' 
+                        ? 'bg-red-100 text-red-800' 
+                        : selectedRisk.severity === 'high' 
+                        ? 'bg-orange-100 text-orange-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {selectedRisk.status === 'resolved' ? 'Resolved' : `${selectedRisk.severity} Priority`}
+                    </span>
                     <span>•</span>
                     <span className="capitalize">{selectedRisk.risk_type.replace(/_/g, ' ')}</span>
                     <span>•</span>
@@ -184,7 +220,22 @@ const RiskAlertsPage: React.FC = () => {
               </div>
               
               <div className="mt-auto">
-                {optionsLoading ? (
+                {selectedRisk.status === 'resolved' ? (
+                  <div className="p-5 bg-emerald-50/80 border border-emerald-200 rounded-xl text-emerald-900">
+                    <div className="flex items-center space-x-2 font-bold text-base mb-1.5 text-emerald-800">
+                      <ShieldCheck className="text-emerald-600" size={22} />
+                      <span>Mitigation Enacted & Risk Resolved</span>
+                    </div>
+                    <p className="text-sm text-emerald-700 mb-2">
+                      {selectedRisk.recommendation || "This risk has been successfully mitigated through approved operational procedures."}
+                    </p>
+                    {selectedRisk.resolved_at && (
+                      <p className="text-xs text-emerald-600 font-medium">
+                        Resolved timestamp: {new Date(selectedRisk.resolved_at).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                ) : optionsLoading ? (
                   <div className="py-10 flex flex-col items-center justify-center text-gray-500 bg-gray-50 rounded-xl">
                     <RefreshCw className="animate-spin mb-2 text-blue-500" size={24} />
                     <span>Analyzing mitigation options...</span>
@@ -196,13 +247,9 @@ const RiskAlertsPage: React.FC = () => {
                     riskId={selectedRisk.id}
                     onApprove={handleOptionApproved}
                   />
-                ) : selectedRisk.status === 'active' ? (
+                ) : (
                   <div className="p-6 bg-yellow-50 text-yellow-800 rounded-xl border border-yellow-100 text-center">
                     <p>No automated mitigation options are available for this specific risk pattern. Manual intervention is required.</p>
-                  </div>
-                ) : (
-                  <div className="p-6 bg-gray-50 text-gray-600 rounded-xl border border-gray-200 text-center">
-                    <p>This risk is currently {selectedRisk.status}. Mitigation options are only available for active risks.</p>
                   </div>
                 )}
               </div>
@@ -215,6 +262,129 @@ const RiskAlertsPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Execution Confirmation Modal */}
+      {executionModal && executionModal.open && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full overflow-hidden border border-gray-100 animate-scaleUp">
+            <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex justify-between items-start">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-xs">
+                  <CheckCircle size={28} className="text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold">Mitigation Action Approved!</h3>
+                  <p className="text-xs text-emerald-100 mt-0.5">Automated operations dispatched to database</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setExecutionModal(null)} 
+                className="text-white/80 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Executed Plan</span>
+                <p className="text-sm font-bold text-gray-900 mt-0.5">{executionModal.title}</p>
+              </div>
+
+              {executionModal.details?.type === 'purchase_order' && (
+                <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider flex items-center">
+                      <ShoppingCart size={14} className="mr-1.5" /> Purchase Order Placed
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white font-mono text-xs font-bold">
+                      {executionModal.details.order_number}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div>
+                      <span className="text-gray-500">Supplier:</span>
+                      <p className="font-semibold text-gray-900">{executionModal.details.supplier_name}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Item & Quantity:</span>
+                      <p className="font-semibold text-gray-900">
+                        {executionModal.details.quantity?.toLocaleString()} {executionModal.details.unit || 'units'}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Order Value:</span>
+                      <p className="font-semibold text-emerald-700">${executionModal.details.total_amount?.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Expected Delivery:</span>
+                      <p className="font-semibold text-gray-900 flex items-center">
+                        <Calendar size={12} className="mr-1 text-gray-400" />
+                        {executionModal.details.expected_delivery_date}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {executionModal.details?.type === 'sales_order_reschedule' && (
+                <div className="bg-amber-50/70 border border-amber-100 rounded-xl p-4 space-y-2">
+                  <span className="text-xs font-semibold text-amber-800 uppercase tracking-wider flex items-center">
+                    <Package size={14} className="mr-1.5" /> Production Rescheduled
+                  </span>
+                  <p className="text-xs text-gray-700 leading-relaxed">
+                    {executionModal.details.summary}
+                  </p>
+                  {executionModal.details.order_numbers?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {executionModal.details.order_numbers.map((so: string) => (
+                        <span key={so} className="px-2 py-0.5 bg-amber-200/60 text-amber-900 font-mono text-[11px] rounded font-medium">
+                          {so}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {executionModal.details?.summary && executionModal.details.type !== 'sales_order_reschedule' && (
+                <p className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                  {executionModal.details.summary}
+                </p>
+              )}
+
+              <div className="pt-2 flex items-center justify-end space-x-3">
+                <button
+                  onClick={() => setExecutionModal(null)}
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 font-medium cursor-pointer"
+                >
+                  Dismiss
+                </button>
+                {executionModal.details?.target_url && (
+                  <button
+                    onClick={() => {
+                      const url = executionModal.details.target_url;
+                      setExecutionModal(null);
+                      navigate(url);
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center space-x-1.5 shadow-sm cursor-pointer"
+                  >
+                    <span>
+                      {executionModal.details.type === 'purchase_order' 
+                        ? 'View in Purchase Orders' 
+                        : executionModal.details.type === 'sales_order_reschedule' || executionModal.details.type === 'sales_order'
+                        ? 'View in Sales Orders'
+                        : 'View Details'}
+                    </span>
+                    <ArrowRight size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
