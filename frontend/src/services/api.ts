@@ -118,7 +118,8 @@ export const RiskApi = {
 
 export const RecommendationApi = {
   getRecommendations: () => api.get('/recommendations'),
-  getRiskOptions: (riskId: number) => api.get<RecommendationOption[]>(`/recommendations/${riskId}/options`)
+  getRiskOptions: (riskId: number) => api.get<RecommendationOption[]>(`/recommendations/${riskId}/options`),
+  approveOption: (riskId: number, optionData: any) => api.post(`/recommendations/${riskId}/approve`, optionData)
 };
 
 export const ReportApi = {

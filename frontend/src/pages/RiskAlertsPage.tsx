@@ -44,6 +44,12 @@ const RiskAlertsPage: React.FC = () => {
     }
   };
 
+  const handleOptionApproved = async (option: RecommendationOption) => {
+    await fetchRisks();
+    setRecalcSuccess(`✓ Mitigation Action Approved: "${option.title}". Risk successfully marked as resolved.`);
+    setTimeout(() => setRecalcSuccess(null), 5000);
+  };
+
   useEffect(() => {
     fetchRisks();
   }, []);
@@ -121,7 +127,7 @@ const RiskAlertsPage: React.FC = () => {
       </div>
 
       <div className="flex space-x-2 mb-4">
-        {['active', 'acknowledged', 'dismissed', 'all'].map(status => (
+        {['active', 'acknowledged', 'resolved', 'dismissed', 'all'].map(status => (
           <button 
             key={status}
             onClick={() => setFilter(status)}
@@ -184,7 +190,12 @@ const RiskAlertsPage: React.FC = () => {
                     <span>Analyzing mitigation options...</span>
                   </div>
                 ) : options.length > 0 ? (
-                  <RecommendationCard options={options} riskTitle={selectedRisk.title} />
+                  <RecommendationCard 
+                    options={options} 
+                    riskTitle={selectedRisk.title} 
+                    riskId={selectedRisk.id}
+                    onApprove={handleOptionApproved}
+                  />
                 ) : selectedRisk.status === 'active' ? (
                   <div className="p-6 bg-yellow-50 text-yellow-800 rounded-xl border border-yellow-100 text-center">
                     <p>No automated mitigation options are available for this specific risk pattern. Manual intervention is required.</p>
