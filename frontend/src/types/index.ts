@@ -186,3 +186,19 @@ export interface SearchResponse {
   total: number;
   results: SearchItem[];
 }
+
+export interface NotificationItem {
+  id: number;
+  title: string;
+  message: string;
+  severity: 'critical' | 'high' | 'medium' | 'info';
+  link: string | null;
+  is_read: boolean;
+  created_at: string | null;
+}
+
+export interface NotificationResponse {
+  unread_count: number;
+  notifications: NotificationItem[];
+}
+

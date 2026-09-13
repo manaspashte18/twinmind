@@ -6,6 +6,7 @@ from app.database import get_db
 from app.models.models import User, PurchaseOrder, PurchaseOrderItem, InventoryRecord
 from app.schemas.schemas import *
 from app.auth import get_current_user
+from app.engine.risk_service import run_risk_detection
 
 router = APIRouter(prefix="/purchase-orders", tags=["purchase_orders"])
 
@@ -45,6 +46,12 @@ def create_purchase_order(po: PurchaseOrderCreate, current_user: User = Depends(
             db.add(db_item)
         db.commit()
         db.refresh(db_po)
+
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return db_po
 
 @router.get("/{po_id}")
@@ -64,6 +71,12 @@ def update_purchase_order(po_id: int, po_update: PurchaseOrderUpdate, current_us
         setattr(po, k, v)
     db.commit()
     db.refresh(po)
+
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return po
 
 @router.put("/{po_id}/receive")
@@ -98,4 +111,10 @@ def receive_purchase_order(po_id: int, current_user: User = Depends(get_current_
             
     db.commit()
     db.refresh(po)
+
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return po

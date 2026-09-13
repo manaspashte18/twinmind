@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models.models import User, SalesOrder, SalesOrderItem
 from app.schemas.schemas import *
 from app.auth import get_current_user
+from app.engine.risk_service import run_risk_detection
 
 router = APIRouter(prefix="/sales-orders", tags=["sales_orders"])
 
@@ -44,6 +45,12 @@ def create_sales_order(so: SalesOrderCreate, current_user: User = Depends(get_cu
             db.add(db_item)
         db.commit()
         db.refresh(db_so)
+
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return db_so
 
 @router.get("/{so_id}")
@@ -63,4 +70,10 @@ def update_sales_order(so_id: int, so_update: SalesOrderUpdate, current_user: Us
         setattr(so, k, v)
     db.commit()
     db.refresh(so)
+
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return so

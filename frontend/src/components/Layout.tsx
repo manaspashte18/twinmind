@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { SearchApi } from '../services/api';
-import { SearchItem } from '../types';
+import { SearchApi, NotificationApi } from '../services/api';
+import { SearchItem, NotificationItem } from '../types';
 import { 
   LayoutDashboard, Package, Truck, BoxIcon, Users, 
   ShoppingCart, ClipboardList, AlertTriangle, FlaskConical, 
   FileText, Upload, Settings, Menu, Bell, Search, LogOut,
-  X, Loader2, ArrowRight
+  X, Loader2, ArrowRight, CheckCheck
 } from 'lucide-react';
 
 const Layout: React.FC = () => {
@@ -23,6 +23,12 @@ const Layout: React.FC = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Notification Center State
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifContainerRef = useRef<HTMLDivElement>(null);
 
   const navItems = [
     { name: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
@@ -84,16 +90,61 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Click Outside to Dismiss Search
+  // Click Outside to Dismiss Search & Notification Center
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
         setSearchOpen(false);
       }
+      if (notifContainerRef.current && !notifContainerRef.current.contains(e.target as Node)) {
+        setNotifOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Live Notifications Polling
+  const fetchNotifications = async () => {
+    try {
+      const res = await NotificationApi.getNotifications();
+      setNotifications(res.data?.notifications || []);
+      setUnreadCount(res.data?.unread_count || 0);
+    } catch (err) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 20000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleMarkAsRead = async (id: number, link: string | null) => {
+    try {
+      await NotificationApi.markAsRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      if (link) {
+        setNotifOpen(false);
+        navigate(link);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await NotificationApi.markAllAsRead();
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
 
   const getItemIcon = (type: string) => {
     switch (type) {
@@ -268,13 +319,106 @@ const Layout: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-4 relative ml-4">
-            <button 
-              onClick={() => navigate('/risks')}
-              className="text-gray-500 hover:text-blue-600 relative p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-              title="View Risk Alerts"
-            >
-              <Bell size={20} />
-            </button>
+            {/* Notification Center Tray */}
+            <div className="relative" ref={notifContainerRef}>
+              <button 
+                onClick={() => setNotifOpen(!notifOpen)}
+                className="text-gray-500 hover:text-blue-600 relative p-2 rounded-full hover:bg-gray-100 transition-colors"
+                title="Notifications"
+              >
+                <Bell size={20} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0.5 right-0.5 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-100 flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-semibold text-sm text-gray-900">Notifications</span>
+                      {unreadCount > 0 && (
+                        <span className="px-2 py-0.5 text-[11px] font-bold bg-red-100 text-red-700 rounded-full">
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center space-x-1"
+                      >
+                        <CheckCheck size={14} />
+                        <span>Mark all read</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-100">
+                    {notifications.length > 0 ? (
+                      notifications.map((n) => (
+                        <div
+                          key={n.id}
+                          onClick={() => handleMarkAsRead(n.id, n.link)}
+                          className={`p-3.5 hover:bg-gray-50 cursor-pointer transition-colors flex items-start space-x-3 ${
+                            !n.is_read ? 'bg-blue-50/40' : ''
+                          }`}
+                        >
+                          <div className={`mt-0.5 p-1.5 rounded-lg shrink-0 ${
+                            n.severity === 'critical' ? 'bg-red-100 text-red-600' :
+                            n.severity === 'high' ? 'bg-orange-100 text-orange-600' :
+                            n.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-blue-100 text-blue-600'
+                          }`}>
+                            <AlertTriangle size={15} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className={`text-[10px] font-bold tracking-wide uppercase px-1.5 py-0.5 rounded ${
+                                n.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                                n.severity === 'high' ? 'bg-orange-100 text-orange-700' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {n.severity}
+                              </span>
+                              {!n.is_read && (
+                                <span className="h-2 w-2 rounded-full bg-blue-600 shrink-0" />
+                              )}
+                            </div>
+                            <p className={`text-xs ${!n.is_read ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+                              {n.title}
+                            </p>
+                            <p className="text-[11px] text-gray-500 mt-1 line-clamp-2">
+                              {n.message}
+                            </p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        <Bell className="mx-auto text-gray-300 mb-2" size={28} />
+                        <p className="text-sm font-medium">All caught up!</p>
+                        <p className="text-xs text-gray-400 mt-0.5">No active alerts or notifications.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-gray-50 border-t border-gray-100 text-center">
+                    <button
+                      onClick={() => {
+                        setNotifOpen(false);
+                        navigate('/risks');
+                      }}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      View All Operational Risks & Options →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="relative">
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)}

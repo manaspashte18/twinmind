@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.models import Supplier, SupplierMaterial, Material, PurchaseOrder, User
 from app.schemas.schemas import SupplierResponse, SupplierCreate, SupplierUpdate
 from app.auth import get_current_user
+from app.engine.risk_service import run_risk_detection
 
 router = APIRouter(prefix="/suppliers", tags=["Suppliers"])
 
@@ -70,6 +71,12 @@ def update_supplier(
         setattr(supplier, key, value)
     db.commit()
     db.refresh(supplier)
+
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return supplier
 
 @router.delete("/{supplier_id}")

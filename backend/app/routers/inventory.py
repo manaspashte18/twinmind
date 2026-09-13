@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.models import User, InventoryRecord, Material
 from app.schemas.schemas import InventoryRecordUpdate
 from app.auth import get_current_user
+from app.engine.risk_service import run_risk_detection
 
 router = APIRouter(prefix="/inventory", tags=["Inventory"])
 
@@ -113,6 +114,13 @@ def update_inventory(
 
     db.commit()
     db.refresh(record)
+
+    # Automatically re-evaluate risks and push in-app notifications if critical thresholds crossed
+    try:
+        run_risk_detection(db, current_user.org_id)
+    except Exception as e:
+        print(f"Warning: automatic risk detection failed: {e}")
+
     return {
         "id": record.id,
         "quantity": record.quantity,

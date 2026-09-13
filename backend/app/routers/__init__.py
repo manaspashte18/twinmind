@@ -15,3 +15,5 @@ from .reports import router as reports_router
 from .simulator import router as simulator_router
 from .seed import router as seed_router
 from .search import router as search_router
+from .notifications import router as notifications_router
+

@@ -3,7 +3,7 @@ import {
   User, Organization, Material, Product, Supplier, Customer, 
   InventoryRecord, PurchaseOrder, SalesOrder, RiskAlert, 
   DashboardSummary, HealthScore, RecommendationOption, ScenarioResult, UploadPreview,
-  SearchResponse
+  SearchResponse, NotificationResponse, NotificationItem
 } from '../types';
 
 const api = axios.create({
@@ -140,4 +140,12 @@ export const SearchApi = {
   search: (query: string) => api.get<SearchResponse>(`/search?q=${encodeURIComponent(query)}`)
 };
 
+export const NotificationApi = {
+  getNotifications: () => api.get<NotificationResponse>('/notifications'),
+  markAsRead: (id: number) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+  testWebhook: (webhook_url: string) => api.post('/notifications/test-webhook', { webhook_url })
+};
+
 export default api;
+
