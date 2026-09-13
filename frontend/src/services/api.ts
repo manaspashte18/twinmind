@@ -123,7 +123,7 @@ export const RecommendationApi = {
 
 export const ReportApi = {
   getDailyReport: () => api.get('/reports/daily'),
-  exportData: (entity: string) => api.get(`/reports/export?entity=${entity}`, { responseType: 'blob' })
+  exportData: (entity: string) => api.get(`/reports/export?entity_type=${entity}&entity=${entity}`, { responseType: 'blob' })
 };
 
 export const SimulatorApi = {
