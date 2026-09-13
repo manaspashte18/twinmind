@@ -4,7 +4,7 @@ import { PurchaseOrder, SalesOrder, Supplier, Customer } from '../types';
 import { PurchaseOrderApi, SalesOrderApi, SupplierApi, CustomerApi } from '../services/api';
 import DataTable, { Column } from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Edit2, Check } from 'lucide-react';
 
 const OrdersPage: React.FC = () => {
   const location = useLocation();
@@ -18,6 +18,13 @@ const OrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit State
+  const [editingOrder, setEditingOrder] = useState<PurchaseOrder | SalesOrder | null>(null);
+  const [editingType, setEditingType] = useState<'purchase' | 'sales'>('purchase');
+  const [editStatus, setEditStatus] = useState('');
+  const [editDeliveryDate, setEditDeliveryDate] = useState('');
+  const [editTotalAmount, setEditTotalAmount] = useState('');
 
   // Form State
   const [selectedEntityId, setSelectedEntityId] = useState<number | ''>('');
@@ -101,13 +108,74 @@ const OrdersPage: React.FC = () => {
     }
   };
 
+  const handleOpenEditPO = (po: PurchaseOrder) => {
+    setEditingOrder(po);
+    setEditingType('purchase');
+    setEditStatus(po.status);
+    setEditDeliveryDate(po.expected_delivery_date || '');
+    setEditTotalAmount(po.total_amount?.toString() || '0');
+  };
+
+  const handleOpenEditSO = (so: SalesOrder) => {
+    setEditingOrder(so);
+    setEditingType('sales');
+    setEditStatus(so.status);
+    setEditDeliveryDate(so.promised_delivery_date || '');
+    setEditTotalAmount(so.total_amount?.toString() || '0');
+  };
+
+  const handleSaveEditOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+    try {
+      setSubmitting(true);
+      if (editingType === 'purchase') {
+        await PurchaseOrderApi.updatePurchaseOrder(editingOrder.id, {
+          status: editStatus,
+          expected_delivery_date: editDeliveryDate || null,
+          total_amount: parseFloat(editTotalAmount) || 0
+        });
+      } else {
+        await SalesOrderApi.updateSalesOrder(editingOrder.id, {
+          status: editStatus,
+          promised_delivery_date: editDeliveryDate || null,
+          total_amount: parseFloat(editTotalAmount) || 0
+        });
+      }
+      setEditingOrder(null);
+      await fetchOrders();
+    } catch (err) {
+      console.error('Failed to update order', err);
+      alert('Failed to update order.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const poColumns: Column<PurchaseOrder>[] = [
     { key: 'po_number', label: 'PO Number', render: (r) => <span className="font-mono font-bold text-blue-600">{r.po_number}</span> },
     { key: 'supplier.name', label: 'Supplier', render: (r) => r.supplier?.name || `Supplier #${r.supplier_id}` },
     { key: 'order_date', label: 'Order Date', render: (r) => r.order_date ? new Date(r.order_date).toLocaleDateString() : 'N/A' },
     { key: 'expected_delivery_date', label: 'Expected Delivery', render: (r) => r.expected_delivery_date ? new Date(r.expected_delivery_date).toLocaleDateString() : 'N/A' },
     { key: 'total_amount', label: 'Total Amount', render: (r) => <span className="font-semibold">${(r.total_amount || 0).toLocaleString()}</span> },
-    { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }
+    { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+    { 
+      key: 'actions', 
+      label: 'Actions', 
+      render: (r) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEditPO(r);
+          }}
+          className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors flex items-center space-x-1"
+          title="Edit purchase order"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </button>
+      ) 
+    }
   ];
 
   const soColumns: Column<SalesOrder>[] = [
@@ -116,7 +184,24 @@ const OrdersPage: React.FC = () => {
     { key: 'order_date', label: 'Order Date', render: (r) => r.order_date ? new Date(r.order_date).toLocaleDateString() : 'N/A' },
     { key: 'promised_delivery_date', label: 'Promised Delivery', render: (r) => r.promised_delivery_date ? new Date(r.promised_delivery_date).toLocaleDateString() : 'N/A' },
     { key: 'total_amount', label: 'Total Amount', render: (r) => <span className="font-semibold">${(r.total_amount || 0).toLocaleString()}</span> },
-    { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> }
+    { key: 'status', label: 'Status', render: (r) => <StatusBadge status={r.status} /> },
+    { 
+      key: 'actions', 
+      label: 'Actions', 
+      render: (r) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEditSO(r);
+          }}
+          className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors flex items-center space-x-1"
+          title="Edit sales order"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </button>
+      ) 
+    }
   ];
 
   return (
@@ -248,6 +333,95 @@ const OrdersPage: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {submitting ? 'Creating...' : 'Create Order'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Order Modal */}
+      {editingOrder && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">
+                  Edit {editingType === 'purchase' ? 'Purchase Order' : 'Sales Order'}
+                </h3>
+                <p className="text-xs text-blue-600 font-mono font-semibold mt-0.5">
+                  {'po_number' in editingOrder ? editingOrder.po_number : editingOrder.so_number}
+                </p>
+              </div>
+              <button onClick={() => setEditingOrder(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEditOrder} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Order Status</label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 font-medium capitalize"
+                >
+                  {editingType === 'purchase' ? (
+                    <>
+                      <option value="pending">Pending</option>
+                      <option value="ordered">Ordered</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="in_production">In Production</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                      <option value="cancelled">Cancelled</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {editingType === 'purchase' ? 'Expected Delivery Date' : 'Promised Delivery Date'}
+                </label>
+                <input
+                  type="date"
+                  value={editDeliveryDate}
+                  onChange={(e) => setEditDeliveryDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Order Value ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editTotalAmount}
+                  onChange={(e) => setEditTotalAmount(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingOrder(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                >
+                  <Check size={16} />
+                  <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>

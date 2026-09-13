@@ -4,13 +4,21 @@ import { InventoryApi, MaterialApi } from '../services/api';
 import DataTable, { Column } from '../components/DataTable';
 import StatusBadge from '../components/StatusBadge';
 import KPICard from '../components/KPICard';
-import { Package, AlertTriangle, ArrowDown, Plus, X } from 'lucide-react';
+import { Package, AlertTriangle, ArrowDown, Plus, X, Edit2, Check } from 'lucide-react';
 
 const InventoryPage: React.FC = () => {
   const [data, setData] = useState<InventoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit State
+  const [editingRecord, setEditingRecord] = useState<InventoryRecord | null>(null);
+  const [editQty, setEditQty] = useState('');
+  const [editMinStock, setEditMinStock] = useState('');
+  const [editUnitCost, setEditUnitCost] = useState('');
+  const [editAvgUsage, setEditAvgUsage] = useState('');
+  const [editName, setEditName] = useState('');
 
   // Form State
   const [name, setName] = useState('');
@@ -67,6 +75,36 @@ const InventoryPage: React.FC = () => {
   const totalValue = data.reduce((acc, curr) => acc + (curr.quantity * (curr.material?.unit_cost || 0)), 0);
   const criticalItems = data.filter(d => d.quantity <= (d.material?.min_stock_level || 0));
 
+  const handleOpenEdit = (rec: InventoryRecord) => {
+    setEditingRecord(rec);
+    setEditQty(rec.quantity.toString());
+    setEditMinStock(rec.material?.min_stock_level?.toString() || '0');
+    setEditUnitCost(rec.material?.unit_cost?.toString() || '0');
+    setEditAvgUsage(rec.material?.avg_daily_usage?.toString() || '0');
+    setEditName(rec.material?.name || '');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingRecord) return;
+    try {
+      setSubmitting(true);
+      await InventoryApi.updateInventory(editingRecord.id, {
+        quantity: parseFloat(editQty),
+        min_stock_level: parseFloat(editMinStock),
+        unit_cost: parseFloat(editUnitCost),
+        avg_daily_usage: parseFloat(editAvgUsage),
+        name: editName
+      });
+      setEditingRecord(null);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to update inventory record', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const columns: Column<InventoryRecord>[] = [
     { key: 'material.code', label: 'Code', render: (r) => <span className="font-mono font-medium text-gray-900">{r.material?.code}</span> },
     { key: 'material.name', label: 'Material Name', render: (r) => <span className="font-medium">{r.material?.name}</span> },
@@ -78,6 +116,23 @@ const InventoryPage: React.FC = () => {
                        r.quantity <= (r.material?.min_stock_level || 0) * 1.5 ? 'low' : 'healthy';
         return <StatusBadge status={status} type="inventory" />;
       }
+    },
+    { 
+      key: 'actions', 
+      label: 'Actions', 
+      render: (r) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEdit(r);
+          }}
+          className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors flex items-center space-x-1"
+          title="Edit material stock & safety parameters"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </button>
+      ) 
     }
   ];
 
@@ -202,6 +257,100 @@ const InventoryPage: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : 'Add Material'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Material Modal */}
+      {editingRecord && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Edit Material & Stock</h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">{editingRecord.material?.code}</p>
+              </div>
+              <button onClick={() => setEditingRecord(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Material Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Stock ({editingRecord.material?.unit || 'units'})</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={editQty}
+                    onChange={(e) => setEditQty(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 font-semibold text-blue-600"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Safety Threshold</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={editMinStock}
+                    onChange={(e) => setEditMinStock(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit Cost ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    value={editUnitCost}
+                    onChange={(e) => setEditUnitCost(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Avg Daily Usage</label>
+                  <input
+                    type="number"
+                    step="any"
+                    required
+                    value={editAvgUsage}
+                    onChange={(e) => setEditAvgUsage(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecord(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                >
+                  <Check size={16} />
+                  <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>

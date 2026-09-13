@@ -3,13 +3,20 @@ import { Product } from '../types';
 import { ProductApi } from '../services/api';
 import DataTable, { Column } from '../components/DataTable';
 import KPICard from '../components/KPICard';
-import { Box, Plus, X, Tag } from 'lucide-react';
+import { Box, Plus, X, Tag, Edit2, Check } from 'lucide-react';
 
 const ProductsPage: React.FC = () => {
   const [data, setData] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit State
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editSku, setEditSku] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editUnitPrice, setEditUnitPrice] = useState('');
 
   // Form state
   const [name, setName] = useState('');
@@ -57,6 +64,35 @@ const ProductsPage: React.FC = () => {
     }
   };
 
+  const handleOpenEdit = (prod: Product) => {
+    setEditingProduct(prod);
+    setEditName(prod.name);
+    setEditSku(prod.sku);
+    setEditCategory(prod.category || 'Auto Component');
+    setEditUnitPrice((prod.unit_price || 0).toString());
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    try {
+      setSubmitting(true);
+      await ProductApi.updateProduct(editingProduct.id, {
+        name: editName,
+        sku: editSku,
+        category: editCategory,
+        unit_price: parseFloat(editUnitPrice) || 0
+      });
+      setEditingProduct(null);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to update product', err);
+      alert('Failed to update product.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const avgPrice = data.length > 0 
     ? (data.reduce((acc, curr) => acc + (curr.unit_price || 0), 0) / data.length).toFixed(2) 
     : '0';
@@ -65,7 +101,24 @@ const ProductsPage: React.FC = () => {
     { key: 'sku', label: 'SKU', render: (r) => <span className="font-mono text-blue-600 font-semibold">{r.sku}</span> },
     { key: 'name', label: 'Product Name', render: (r) => <span className="font-medium text-gray-900">{r.name}</span> },
     { key: 'category', label: 'Category', render: (r) => <span className="px-2 py-1 bg-gray-100 rounded text-xs text-gray-700">{r.category || 'General'}</span> },
-    { key: 'unit_price', label: 'Unit Price', render: (r) => <span className="font-semibold">${(r.unit_price || 0).toLocaleString()}</span> }
+    { key: 'unit_price', label: 'Unit Price', render: (r) => <span className="font-semibold">${(r.unit_price || 0).toLocaleString()}</span> },
+    { 
+      key: 'actions', 
+      label: 'Actions', 
+      render: (r) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEdit(r);
+          }}
+          className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors flex items-center space-x-1"
+          title="Edit product details"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </button>
+      ) 
+    }
   ];
 
   return (
@@ -163,6 +216,82 @@ const ProductsPage: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : 'Create Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Edit Product Details</h3>
+                <p className="text-xs text-gray-500 font-mono mt-0.5">Product ID: #{editingProduct.id}</p>
+              </div>
+              <button onClick={() => setEditingProduct(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">SKU Code</label>
+                <input
+                  type="text"
+                  required
+                  value={editSku}
+                  onChange={(e) => setEditSku(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <input
+                  type="text"
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price ($)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={editUnitPrice}
+                  onChange={(e) => setEditUnitPrice(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div className="flex justify-end space-x-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                >
+                  <Check size={16} />
+                  <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>

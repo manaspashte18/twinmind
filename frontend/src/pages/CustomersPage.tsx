@@ -4,13 +4,20 @@ import { CustomerApi } from '../services/api';
 import DataTable, { Column } from '../components/DataTable';
 import KPICard from '../components/KPICard';
 import StatusBadge from '../components/StatusBadge';
-import { Users, Plus, X, Award, ShieldAlert } from 'lucide-react';
+import { Users, Plus, X, Award, ShieldAlert, Edit2, Check } from 'lucide-react';
 
 const CustomersPage: React.FC = () => {
   const [data, setData] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit State
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editPriority, setEditPriority] = useState('normal');
 
   // Form state
   const [name, setName] = useState('');
@@ -59,6 +66,35 @@ const CustomersPage: React.FC = () => {
     }
   };
 
+  const handleOpenEdit = (cust: Customer) => {
+    setEditingCustomer(cust);
+    setEditName(cust.name);
+    setEditEmail(cust.contact_email || '');
+    setEditPhone(cust.contact_phone || '');
+    setEditPriority(cust.priority || 'normal');
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCustomer) return;
+    try {
+      setSubmitting(true);
+      await CustomerApi.updateCustomer(editingCustomer.id, {
+        name: editName,
+        contact_email: editEmail || null,
+        contact_phone: editPhone || null,
+        priority: editPriority
+      });
+      setEditingCustomer(null);
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to update customer', err);
+      alert('Failed to update customer.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const criticalCount = data.filter(c => c.priority === 'critical').length;
   const highCount = data.filter(c => c.priority === 'high').length;
 
@@ -82,6 +118,23 @@ const CustomersPage: React.FC = () => {
           </span>
         );
       }
+    },
+    { 
+      key: 'actions', 
+      label: 'Actions', 
+      render: (r) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenEdit(r);
+          }}
+          className="px-2.5 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors flex items-center space-x-1"
+          title="Edit customer details & priority"
+        >
+          <Edit2 size={13} />
+          <span>Edit</span>
+        </button>
+      ) 
     }
   ];
 
@@ -181,6 +234,83 @@ const CustomersPage: React.FC = () => {
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : 'Add Customer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Modal */}
+      {editingCustomer && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Edit Customer Account</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Account ID: #{editingCustomer.id}</p>
+              </div>
+              <button onClick={() => setEditingCustomer(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Company / Customer Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Priority Level</label>
+                <select
+                  value={editPriority}
+                  onChange={(e) => setEditPriority(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="critical">Critical (Tier-1 Partner)</option>
+                  <option value="high">High Priority</option>
+                  <option value="normal">Normal</option>
+                  <option value="low">Low Priority</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-3 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomer(null)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-1"
+                >
+                  <Check size={16} />
+                  <span>{submitting ? 'Saving...' : 'Save Changes'}</span>
                 </button>
               </div>
             </form>

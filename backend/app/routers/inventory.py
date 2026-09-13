@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
@@ -89,11 +90,41 @@ def update_inventory(
     if not record:
         raise HTTPException(status_code=404, detail="Inventory record not found")
     
-    for k, v in inv_update.model_dump(exclude_unset=True).items():
-        setattr(record, k, v)
+    if inv_update.quantity is not None:
+        record.quantity = float(inv_update.quantity)
+    if inv_update.warehouse is not None:
+        record.warehouse = inv_update.warehouse
+    record.last_updated = datetime.utcnow()
+
+    # Update associated material if fields provided
+    mat = db.query(Material).filter(
+        Material.id == record.material_id,
+        Material.org_id == current_user.org_id
+    ).first()
+    if mat:
+        if inv_update.min_stock_level is not None:
+            mat.min_stock_level = float(inv_update.min_stock_level)
+        if inv_update.unit_cost is not None:
+            mat.unit_cost = float(inv_update.unit_cost)
+        if inv_update.avg_daily_usage is not None:
+            mat.avg_daily_usage = float(inv_update.avg_daily_usage)
+        if inv_update.name is not None:
+            mat.name = inv_update.name
+
     db.commit()
     db.refresh(record)
-    return record
+    return {
+        "id": record.id,
+        "quantity": record.quantity,
+        "warehouse": record.warehouse,
+        "material": {
+            "id": mat.id if mat else None,
+            "name": mat.name if mat else None,
+            "unit_cost": mat.unit_cost if mat else None,
+            "min_stock_level": mat.min_stock_level if mat else None,
+            "avg_daily_usage": mat.avg_daily_usage if mat else None
+        }
+    }
 
 @router.get("/summary")
 def get_inventory_summary(

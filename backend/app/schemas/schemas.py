@@ -208,6 +208,10 @@ class InventoryRecordCreate(InventoryRecordBase):
 class InventoryRecordUpdate(BaseModel):
     quantity: Optional[float] = None
     warehouse: Optional[str] = None
+    min_stock_level: Optional[float] = None
+    unit_cost: Optional[float] = None
+    avg_daily_usage: Optional[float] = None
+    name: Optional[str] = None
 
 class InventoryRecordResponse(InventoryRecordBase):
     id: int
