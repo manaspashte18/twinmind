@@ -16,10 +16,13 @@ router = APIRouter(prefix="/risks", tags=["risks"])
 def list_risks(
     severity: Optional[str] = None, 
     risk_type: Optional[str] = None, 
+    status: Optional[str] = None,
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
 ):
-    query = db.query(RiskAlert).filter(RiskAlert.org_id == current_user.org_id, RiskAlert.status == "active")
+    query = db.query(RiskAlert).filter(RiskAlert.org_id == current_user.org_id)
+    if status and status != "all":
+        query = query.filter(RiskAlert.status == status)
     if severity:
         query = query.filter(RiskAlert.severity == severity)
     if risk_type:
@@ -34,6 +37,7 @@ def get_risk(risk_id: int, current_user: User = Depends(get_current_user), db: S
     return risk
 
 @router.put("/{risk_id}/acknowledge")
+@router.post("/{risk_id}/acknowledge")
 def acknowledge_risk(risk_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     risk = db.query(RiskAlert).filter(RiskAlert.id == risk_id, RiskAlert.org_id == current_user.org_id).first()
     if not risk:
@@ -44,6 +48,7 @@ def acknowledge_risk(risk_id: int, current_user: User = Depends(get_current_user
     return risk
 
 @router.put("/{risk_id}/dismiss")
+@router.post("/{risk_id}/dismiss")
 def dismiss_risk(risk_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     risk = db.query(RiskAlert).filter(RiskAlert.id == risk_id, RiskAlert.org_id == current_user.org_id).first()
     if not risk:

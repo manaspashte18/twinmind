@@ -109,10 +109,10 @@ export const DashboardApi = {
 };
 
 export const RiskApi = {
-  getRisks: () => api.get<RiskAlert[]>('/risks'),
+  getRisks: (status?: string) => api.get<RiskAlert[]>(`/risks${status ? `?status=${status}` : ''}`),
   getRisk: (id: number) => api.get<RiskAlert>(`/risks/${id}`),
-  acknowledgeRisk: (id: number) => api.post(`/risks/${id}/acknowledge`),
-  dismissRisk: (id: number) => api.post(`/risks/${id}/dismiss`),
+  acknowledgeRisk: (id: number) => api.put<RiskAlert>(`/risks/${id}/acknowledge`),
+  dismissRisk: (id: number) => api.put<RiskAlert>(`/risks/${id}/dismiss`),
   recalculateRisks: () => api.post('/risks/recalculate')
 };
 

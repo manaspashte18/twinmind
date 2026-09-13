@@ -18,6 +18,7 @@ const RiskAlertsPage: React.FC = () => {
     try {
       const res = await RiskApi.getRisks();
       setRisks(res.data);
+      setSelectedRisk(prev => prev ? (res.data.find(r => r.id === prev.id) || null) : null);
     } catch (error) {
       console.error('Failed to fetch risks', error);
     } finally {
