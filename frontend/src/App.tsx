@@ -8,6 +8,8 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import InventoryPage from './pages/InventoryPage';
 import SuppliersPage from './pages/SuppliersPage';
+import ProductsPage from './pages/ProductsPage';
+import CustomersPage from './pages/CustomersPage';
 import OrdersPage from './pages/OrdersPage';
 import RiskAlertsPage from './pages/RiskAlertsPage';
 import SimulatorPage from './pages/SimulatorPage';
@@ -41,8 +43,8 @@ function App() {
             <Route index element={<DashboardPage />} />
             <Route path="inventory" element={<InventoryPage />} />
             <Route path="suppliers" element={<SuppliersPage />} />
-            <Route path="products" element={<div className="p-6">Products Management - Coming Soon</div>} />
-            <Route path="customers" element={<div className="p-6">Customers Directory - Coming Soon</div>} />
+            <Route path="products" element={<ProductsPage />} />
+            <Route path="customers" element={<CustomersPage />} />
             <Route path="purchase-orders" element={<OrdersPage />} />
             <Route path="sales-orders" element={<OrdersPage />} />
             <Route path="risks" element={<RiskAlertsPage />} />
