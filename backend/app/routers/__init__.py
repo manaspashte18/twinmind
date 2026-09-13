@@ -1,0 +1,16 @@
+from .auth import router as auth_router
+from .organization import router as organization_router
+from .upload import router as upload_router
+from .products import router as products_router
+from .materials import router as materials_router
+from .suppliers import router as suppliers_router
+from .customers import router as customers_router
+from .inventory import router as inventory_router
+from .purchase_orders import router as purchase_orders_router
+from .sales_orders import router as sales_orders_router
+from .dashboard import router as dashboard_router
+from .risks import router as risks_router
+from .recommendations import router as recommendations_router
+from .reports import router as reports_router
+from .simulator import router as simulator_router
+from .seed import router as seed_router
